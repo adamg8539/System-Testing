@@ -197,10 +197,26 @@ def open_brand(driver, brand_name):
     return heading, product_names(driver)
 
 
+def open_invalid_brand(driver, manufacturer_id):
+    """Open a manufacturer ID that does not exist and return the page details."""
+    # There is no invalid brand link in the menu, so I use the same manufacturer route
+    # with an ID that is not assigned to any brand on the website.
+    invalid_url = (
+        f"{BASE_URL}index.php?route=product/manufacturer/info"
+        f"&manufacturer_id={manufacturer_id}"
+    )
+    driver.get(invalid_url)
+    heading = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.CSS_SELECTOR, "#content h1"))
+    ).text.strip()
+    page_text = driver.find_element(By.ID, "content").text
+    return heading, page_text
+
+
 # T006 - BRAND BROWSING
-# Apple checks a longer list, while Canon and Sony each check a single product.
+# Apple checks a long list, Canon checks one product and the invalid ID checks error handling.
 @pytest.mark.parametrize(
-    "scenario_id, brand_name, expected_products",
+    "scenario_id, brand_name, expected_products, manufacturer_id",
     [
         (
             "S1",
@@ -209,13 +225,30 @@ def open_brand(driver, brand_name):
                 'Apple Cinema 30"', "iMac", "iPhone", "iPod Classic", "iPod Nano",
                 "iPod Shuffle", "iPod Touch", "MacBook", "MacBook Air", "MacBook Pro",
             ],
+            None,
         ),
-        ("S2", "Canon", ["Canon EOS 5D"]),
-        ("S3", "Sony", ["Sony VAIO"]),
+        ("S2", "Canon", ["Canon EOS 5D"], None),
+        ("S3", None, [], 999),
     ],
 )
-def test_t006_brand_browsing(driver, scenario_id, brand_name, expected_products):
-    """Check that Apple, Canon and Sony show the products linked to each brand."""
+def test_t006_brand_browsing(
+    driver, scenario_id, brand_name, expected_products, manufacturer_id
+):
+    """Check brands with many, one and invalid manufacturer results."""
+    if manufacturer_id is not None:
+        heading, page_text = open_invalid_brand(driver, manufacturer_id)
+        screenshot = save_evidence(driver, "T006", scenario_id)
+        # The website should handle the invalid ID without crashing or showing products.
+        passed = heading == "Brand not found!" and "Brand not found!" in page_text
+        expected = "The invalid manufacturer ID is handled with a Brand not found message."
+        actual = f"Heading: {heading}; page message: Brand not found!"
+        record_result(
+            "T006", scenario_id, f"manufacturer_id={manufacturer_id}", expected,
+            actual, "PASS" if passed else "FAIL", screenshot,
+        )
+        assert passed, actual
+        return
+
     heading, actual_products = open_brand(driver, brand_name)
     screenshot = save_evidence(driver, "T006", scenario_id)
     # This catches either the wrong brand page or the wrong products being displayed.

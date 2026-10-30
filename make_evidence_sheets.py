@@ -103,7 +103,7 @@ def main():
         ),
         "T006": (
             "Brand Browsing",
-            ["open_brand", "test_t006_brand_browsing"],
+            ["open_brand", "open_invalid_brand", "test_t006_brand_browsing"],
         ),
     }
 
